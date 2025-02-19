@@ -14,8 +14,10 @@ const LoginAndRegister = ({ setIsAuthenticated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
     try {
-      const url = isLogin ? "http://localhost:5000/login" : "http://localhost:5000/signup";
+      const url = isLogin ? `${backendUrl}/login` : `${backendUrl}/signup`;
       const payload = isLogin ? { email, password } : { username, email, password };
       
       const { data } = await axios.post(url, payload);

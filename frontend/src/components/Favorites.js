@@ -79,8 +79,8 @@ const Favorites = () => {
 
   useEffect(() => {
     if (!userId) return;
-
-    fetch(`http://localhost:5000/api/favorites?userId=${userId}`)
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+    fetch(`${backendUrl}/api/favorites?userId=${userId}`)
       .then((res) => res.json())
       .then((data) => {
         const favoriteEvents = data.map((fav) =>
@@ -92,8 +92,9 @@ const Favorites = () => {
   }, [userId]);
 
   const handleUnlike = async (eventId) => {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
     try {
-      const response = await fetch(`http://localhost:5000/api/favorites/${userId}/${eventId}`, {
+      const response = await fetch(`${backendUrl}/api/favorites/${userId}/${eventId}`, {
         method: "DELETE",
       });
 

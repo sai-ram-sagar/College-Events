@@ -138,8 +138,9 @@ const AllEvents = () => {
 
   useEffect(() => {
     if (!userId) return;
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-    fetch(`http://localhost:5000/api/favorites?userId=${userId}`)
+    fetch(`${backendUrl}/api/favorites?userId=${userId}`)
       .then((res) => res.json())
       .then((data) => setFavorites(data.map((fav) => fav.event_id)))
       .catch((err) => console.error("Error fetching favorites:", err));
@@ -157,15 +158,19 @@ const AllEvents = () => {
   const toggleFavorite = async (eventId) => {
     if (favorites.includes(eventId)) {
       setFavorites((prev) => prev.filter((id) => id !== eventId));
+      const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
       try {
-        await fetch(`http://localhost:5000/api/favorites/${userId}/${eventId}`, { method: "DELETE" });
+        await fetch(`${backendUrl}/api/favorites/${userId}/${eventId}`, { method: "DELETE" });
       } catch (error) {
         console.error("Error removing favorite:", error);
       }
     } else {
       setFavorites((prev) => [...prev, eventId]);
+      const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
       try {
-        await fetch("http://localhost:5000/api/favorites", {
+        await fetch(`${backendUrl}/api/favorites`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, event_id: eventId }),
@@ -178,9 +183,11 @@ const AllEvents = () => {
 
   const handleCategoryClick = async (category) => {
     setSelectedCategory(category);
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
     try {
       // Store category immediately when clicked
-      await axios.post("http://localhost:5000/api/search-history", {
+      await axios.post(`${backendUrl}/api/search-history`, {
         user_id: userId,
         search_query: "",  // No input text, just category
         category: category.value,
@@ -192,10 +199,12 @@ const AllEvents = () => {
 
   const handleSearch = async (e) => {
     setSearchQuery(e.target.value);
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
     if (e.target.value) {
       try {
         // Store the search input text as well
-        await axios.post("http://localhost:5000/api/search-history", {
+        await axios.post(`${backendUrl}/api/search-history`, {
           user_id: userId,
           search_query: e.target.value,
           category: selectedCategory ? selectedCategory.value : "",

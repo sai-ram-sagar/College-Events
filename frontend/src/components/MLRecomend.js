@@ -10,9 +10,11 @@ const RecommendationsPage = ({ userId }) => {
 
   useEffect(() => {
     const userId = localStorage.getItem("userId")
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
     const getRecommendations = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/ml/recommendations/${userId}`);
+        const response = await axios.get(`${backendUrl}/api/ml/recommendations/${userId}`);
         setRecommendedEvents(response.data);
       } catch (error) {
         console.error("Error fetching recommendations:", error);

@@ -89,8 +89,9 @@ const RegisteredEvents = () => {
 
   useEffect(() => {
     if (!userId) return;
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-    fetch(`http://localhost:5000/api/register-event?userId=${userId}`)
+    fetch(`${backendUrl}/api/register-event?userId=${userId}`)
       .then((res) => res.json())
       .then((data) => {
         const favoriteEvents = data.map((fav) =>
@@ -103,7 +104,7 @@ const RegisteredEvents = () => {
 
 //   const handleUnlike = async (eventId) => {
 //     try {
-//       const response = await fetch(`http://localhost:5000/api/favorites/${userId}/${eventId}`, {
+//       const response = await fetch(`${backendUrl}/api/favorites/${userId}/${eventId}`, {
 //         method: "DELETE",
 //       });
 

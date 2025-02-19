@@ -60,9 +60,10 @@ const Recommendation = () => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!userId) return;
+      const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
       try {
-        const res = await axios.get(`http://localhost:5000/api/recommendations?userId=${userId}`);
+        const res = await axios.get(`${backendUrl}/api/recommendations?userId=${userId}`);
         setRecommendedEvents(res.data.recommendedEvents); // Set recommended events from the API response
       } catch (error) {
         console.error('Error fetching recommendations:', error);

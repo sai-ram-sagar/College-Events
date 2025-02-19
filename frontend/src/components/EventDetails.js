@@ -19,8 +19,9 @@ const EventDetails = () => {
   useEffect(() => {
     const checkRegistration = async () => {
       if (!userId) return;
+      const backendUrl = process.env.REACT_APP_BACKEND_URL;
       try {
-        const response = await fetch(`http://localhost:5000/api/check-registration?user_id=${userId}&event_id=${id}`);
+        const response = await fetch(`${backendUrl}/api/check-registration?user_id=${userId}&event_id=${id}`);
         const data = await response.json();
         if (response.ok && data.registered) setIsRegistered(true);
       } catch (error) {
@@ -42,8 +43,9 @@ const EventDetails = () => {
       alert("Please log in to register for the event.");
       return;
     }
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
     try {
-      const response = await fetch("http://localhost:5000/api/register-event", {
+      const response = await fetch(`${backendUrl}/api/register-event`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, event_id: event.id, ...formData }),
