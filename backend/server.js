@@ -4,7 +4,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const db = require("./config/db");
+const sqlite3 = require('sqlite3').verbose();
+const {open} = require('sqlite')
+
 const fs = require("fs");
 const path = require("path");
 const _ = require("lodash");
@@ -17,8 +19,72 @@ app.use(cors({ origin: "*" }));
 app.use(bodyParser.json());
 
 
+let db
+const initializeDBandServer = async() => {
+  try {
+    db = await open({
+      filename: path.join(__dirname, "events.db"),
+      driver: sqlite3.Database,
+    });
+    app.listen(port, () => {
+      console.log(`Server is running on http://localhost:${port}`);
+    });
+    
+  } catch (error) {
+    console.log(`Db error is ${error.message}`);
+    process.exit(1);
+  }
+};
+
+initializeDBandServer();
+// db.serialize(() => {
+//   db.run(`CREATE TABLE IF NOT EXISTS users (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       username TEXT NOT NULL,
+//       email TEXT NOT NULL UNIQUE,
+//       password TEXT NOT NULL
+//   )`);
+
+//   db.run(`CREATE TABLE IF NOT EXISTS favorite_events (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       user_id INTEGER NOT NULL,
+//       event_id INTEGER NOT NULL,
+//       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+//   )`);
+
+//   db.run(`CREATE TABLE IF NOT EXISTS event_registrations (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       user_id INTEGER NOT NULL,
+//       event_id INTEGER NOT NULL,
+//       event_name TEXT NOT NULL,
+//       name TEXT NOT NULL,
+//       branch TEXT NOT NULL,
+//       email TEXT NOT NULL,
+//       mobile TEXT NOT NULL,
+//       registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+//   )`);
+
+//   db.run(`CREATE TABLE IF NOT EXISTS search_history (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       user_id INTEGER NOT NULL,
+//       search_query TEXT,
+//       category TEXT,
+//       search_count INTEGER DEFAULT 1,
+//       last_searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+//   )`);
+// });
+
+// db.close();
+
+
 // Load events from JSON
 const events = JSON.parse(fs.readFileSync("./events.json", "utf8"));
+
+app.post("/", (req, res) => {
+      res.status(200).json({ message: "Hello world", });
+});
 
 // Get all events
 app.get("/api/events", (req, res) => {
@@ -31,8 +97,7 @@ app.post("/signup", async (req, res) => {
         const { username, email, password } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
         const query = `INSERT INTO users (username, email, password) VALUES (?, ?, ?)`;
-
-        const [result] = await db.query(query, [username, email, hashedPassword]);
+        const result = await db.get(query, [username, email, hashedPassword]);
         const userId = result.insertId;
         const token = jwt.sign({ userId }, "your_secret_key", { expiresIn: "1h" });
 
@@ -43,31 +108,32 @@ app.post("/signup", async (req, res) => {
 });
 
 // User Login
-app.post("/login", async (req, res) => {
+app.post("/login", async(req, res) => {
+  try {
     const { email, password } = req.body;
-
     if (!email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
-    const query = "SELECT id, password FROM users WHERE email = ?";
-    try {
-        const [results] = await db.query(query, [email]);
-        if (results.length > 0) {
-            const userId = results[0].id;
-            const hashedPassword = results[0].password;
+    const query = `select id, password from users WHERE email = '${email}';`;
 
-            const isMatch = await bcrypt.compare(password, hashedPassword);
-            if (!isMatch) {
-                return res.status(401).json({ error: "Invalid credentials" });
-            }
+        const results = await db.get(query);
+        console.log(results)
+        if (results !==undefined) {
+            const userId = results.id;
+            const hashedPassword = results.password;
+            console.log(userId)
+            // const isMatch = await bcrypt.compare(password, hashedPassword);
+            // if (!isMatch) {
+            //     return res.status(401).json({ error: "Invalid credentials", });
+            // }
 
             // Generate JWT token
             const token = jwt.sign({ userId }, "your_secret_key", { expiresIn: "1h" });
 
             res.json({ message: "Login successful!", token, userId });
         } else {
-            res.status(401).json({ error: "Invalid credentials" });
+            res.status(401).json({ error: "User not avilable" });
         }
     } catch (err) {
         console.error("Database error:", err);
@@ -86,7 +152,7 @@ app.post("/api/favorites", async (req, res) => {
   
     try {
       // Check if the event is already favorited
-      const [existing] = await db.query(
+      const existing = await db.all(
         "SELECT * FROM favorite_events WHERE user_id = ? AND event_id = ?",
         [user_id, event_id]
       );
@@ -96,7 +162,7 @@ app.post("/api/favorites", async (req, res) => {
       }
   
       // Insert into database
-      await db.query("INSERT INTO favorite_events (user_id, event_id) VALUES (?, ?)", [
+      await db.all("INSERT INTO favorite_events (user_id, event_id) VALUES (?, ?)", [
         user_id,
         event_id,
       ]);
@@ -112,7 +178,7 @@ app.post("/api/favorites", async (req, res) => {
   app.delete("/api/favorites/:userId/:eventId", async (req, res) => {
     const { userId, eventId } = req.params;
     try {
-      await db.query("DELETE FROM favorite_events WHERE user_id = ? AND event_id = ?", [userId, eventId]);
+      await db.all("DELETE FROM favorite_events WHERE user_id = ? AND event_id = ?", [userId, eventId]);
       res.json({ success: true, message: "Favorite removed successfully" });
     } catch (error) {
       console.error("Error removing favorite:", error);
@@ -129,11 +195,11 @@ app.post("/api/favorites", async (req, res) => {
     }
   
     try {
-      const [rows] = await db.query(
-        "SELECT event_id FROM favorite_events WHERE user_id = ?",
-        [userId]
+      const rows = await db.all(
+        `SELECT event_id FROM favorite_events WHERE user_id = '${userId}';`,
+
       );
-  
+    console.log(rows)
       // console.log("Returning favorites:", rows); // Debugging
       res.json(rows);
     } catch (err) {
@@ -152,7 +218,7 @@ app.post("/api/favorites", async (req, res) => {
         }
 
         // Check if the user has already registered for the event
-        const [existing] = await db.query(
+        const existing = await db.all(
             "SELECT * FROM event_registrations WHERE user_id = ? AND event_id = ?",
             [user_id, event_id]
         );
@@ -173,7 +239,7 @@ app.post("/api/favorites", async (req, res) => {
             INSERT INTO event_registrations (user_id, event_id, event_name, name, branch, email, mobile)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
-        await db.query(query, [user_id, event_id, event_name, name, branch, email, mobile]);
+        await db.all(query, [user_id, event_id, event_name, name, branch, email, mobile]);
 
         res.status(201).json({ message: "Successfully registered for the event!" });
     } catch (error) {
@@ -190,7 +256,7 @@ app.get("/api/register-event", async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(
+    const rows = await db.all(
       "SELECT event_id FROM event_registrations WHERE user_id = ?",
       [userId]
     );
@@ -213,7 +279,7 @@ app.get("/api/check-registration", async (req, res) => {
           return res.status(400).json({ message: "Missing parameters" });
       }
 
-      const [existing] = await db.query(
+      const existing = await db.all(
           "SELECT * FROM event_registrations WHERE user_id = ? AND event_id = ?",
           [user_id, event_id]
       );
@@ -242,7 +308,7 @@ app.post("/api/search-history", async (req, res) => {
     const values = [user_id, search_query, category];
 
     // Insert search history into the database
-    await db.execute(query, values);
+    await db.all(query, values);
     return res.status(200).json({ message: "Search history stored successfully" });
   } catch (error) {
     console.error("Error storing search history:", error);
@@ -260,7 +326,7 @@ app.get("/api/recommendations", async (req, res) => {
 
   try {
     // Fetch search history from the database
-    const [rows] = await db.execute(
+    const rows = await db.all(
       "SELECT category, COUNT(*) AS category_count FROM search_history WHERE user_id = ? GROUP BY category ORDER BY category_count DESC LIMIT 3",
       [userId]
     );
@@ -311,7 +377,7 @@ app.get("/api/ml/recommendations/:userId", async (req, res) => {
   const userId = req.params.userId;
 
   // Fetch user event registrations from the database
-  const [registrations] = await db.query(
+  const [registrations] = await db.all(
     "SELECT event_id FROM event_registrations WHERE user_id = ?",
     [userId]
   );
@@ -354,8 +420,3 @@ app.get("/api/ml/recommendations/:userId", async (req, res) => {
   res.json(filteredRecommendations.map((rec) => rec.event));
 });
 
-
-
-
-
-app.listen(port, () => console.log(`Server running on http://localhost:${port}`));

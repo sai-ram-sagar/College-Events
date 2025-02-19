@@ -76,7 +76,7 @@ const MoreButton = styled.button`
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const userId = localStorage.getItem("userId");
-
+console.log(userId)
   useEffect(() => {
     if (!userId) return;
     const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -86,6 +86,7 @@ const Favorites = () => {
         const favoriteEvents = data.map((fav) =>
           eventData.find((event) => event.id === fav.event_id)
         ).filter(Boolean);
+        console.log(data)
         setFavorites(favoriteEvents);
       })
       .catch((err) => console.error("Error fetching favorites:", err));
